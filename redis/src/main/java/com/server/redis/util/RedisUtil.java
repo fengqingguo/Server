@@ -10,8 +10,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
-@Lazy
-@Component
 public class RedisUtil{
 
     @Autowired

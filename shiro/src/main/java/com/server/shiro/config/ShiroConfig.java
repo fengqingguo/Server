@@ -6,6 +6,9 @@ import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.servlet.Filter;
+
+import com.server.shiro.cache.RedisCacheManager;
+import com.server.shiro.session.RedisSessionDAO;
 import org.apache.commons.io.IOUtils;
 import org.apache.shiro.cache.ehcache.EhCacheManager;
 import org.apache.shiro.codec.Base64;
@@ -36,7 +39,7 @@ import org.springframework.context.annotation.PropertySource;
 
 /**
  * 权限配置加载
- * 
+ *
  * @author server
  */
 @Configuration
@@ -85,17 +88,20 @@ public class ShiroConfig
     @Value("${shiro.user.unauthorizedUrl}")
     private String unauthorizedUrl;
 
+    // redis缓存开关
+    @Value("${spring.redis.enabled}")
+    private boolean redisEnabled = false;
+
     /**
      * 缓存管理器 使用Ehcache实现
      */
-    @Bean
     public EhCacheManager getEhCacheManager()
     {
-        net.sf.ehcache.CacheManager cacheManager = net.sf.ehcache.CacheManager.getCacheManager("server");
+        net.sf.ehcache.CacheManager cacheManager = net.sf.ehcache.CacheManager.getCacheManager("ruoyi");
         EhCacheManager em = new EhCacheManager();
         if (StringUtils.isNull(cacheManager))
         {
-            em.setCacheManager(new net.sf.ehcache.CacheManager(getCacheManagerConfigFileInputStream()));
+            em.setCacheManagerConfigFile("classpath:ehcache/ehcache-shiro.xml");
             return em;
         }
         else
@@ -106,38 +112,23 @@ public class ShiroConfig
     }
 
     /**
-     * 返回配置文件流 避免ehcache配置文件一直被占用，无法完全销毁项目重新部署
+     * 缓存管理器 使用redis实现
+     *
+     * @return
      */
-    protected InputStream getCacheManagerConfigFileInputStream()
+    public RedisCacheManager getRedisCacheManager()
     {
-        String configFile = "classpath:ehcache/ehcache-shiro.xml";
-        InputStream inputStream = null;
-        try
-        {
-            inputStream = ResourceUtils.getInputStreamForPath(configFile);
-            byte[] b = IOUtils.toByteArray(inputStream);
-            InputStream in = new ByteArrayInputStream(b);
-            return in;
-        }
-        catch (IOException e)
-        {
-            throw new ConfigurationException(
-                    "Unable to obtain input stream for cacheManagerConfigFile [" + configFile + "]", e);
-        }
-        finally
-        {
-            IOUtils.closeQuietly(inputStream);
-        }
+        RedisCacheManager redisCacheManager = new RedisCacheManager();
+        return redisCacheManager;
     }
 
     /**
      * 自定义Realm
      */
     @Bean
-    public UserRealm userRealm(EhCacheManager cacheManager)
+    public UserRealm userRealm()
     {
         UserRealm userRealm = new UserRealm();
-        userRealm.setCacheManager(cacheManager);
         return userRealm;
     }
 
@@ -149,6 +140,17 @@ public class ShiroConfig
     {
         OnlineSessionDAO sessionDAO = new OnlineSessionDAO();
         return sessionDAO;
+    }
+
+    /**
+     * 自定义RedisSessionDAO会话
+     */
+    @Bean
+    public RedisSessionDAO redisSessionDAO()
+    {
+        RedisSessionDAO redisSessionDAO = new RedisSessionDAO();
+        redisSessionDAO.setExpireTime(expireTime * 60);
+        return redisSessionDAO;
     }
 
     /**
@@ -183,7 +185,7 @@ public class ShiroConfig
     {
         OnlineWebSessionManager manager = new OnlineWebSessionManager();
         // 加入缓存管理器
-        manager.setCacheManager(getEhCacheManager());
+        manager.setCacheManager(redisEnabled ? getRedisCacheManager() : getEhCacheManager());
         // 删除过期的session
         manager.setDeleteInvalidSessions(true);
         // 设置全局session超时时间
@@ -207,7 +209,7 @@ public class ShiroConfig
     {
         OnlineWebSessionManager manager = new OnlineWebSessionManager();
         // 加入缓存管理器
-        manager.setCacheManager(getEhCacheManager());
+        manager.setCacheManager(redisEnabled ? getRedisCacheManager() : getEhCacheManager());
         // 删除过期的session
         manager.setDeleteInvalidSessions(true);
         // 设置全局session超时时间
@@ -219,7 +221,7 @@ public class ShiroConfig
         // 是否定时检查session
         manager.setSessionValidationSchedulerEnabled(true);
         // 自定义SessionDao
-        manager.setSessionDAO(sessionDAO());
+        manager.setSessionDAO(redisEnabled ? redisSessionDAO() : sessionDAO());
         // 自定义sessionFactory
         manager.setSessionFactory(sessionFactory());
         return manager;
@@ -237,7 +239,7 @@ public class ShiroConfig
         // 记住我
         securityManager.setRememberMeManager(rememberMeManager());
         // 注入缓存管理器;
-        securityManager.setCacheManager(getEhCacheManager());
+        securityManager.setCacheManager(redisEnabled ? getRedisCacheManager() : getEhCacheManager());
         // session管理器
         securityManager.setSessionManager(sessionManager());
         return securityManager;

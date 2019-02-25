@@ -70,6 +70,12 @@
         <!--System-->
         <dependency>
             <groupId>com.server</groupId>
+            <artifactId>redis</artifactId>
+            <version>${server.version}</version>
+        </dependency>
+        <!--System-->
+        <dependency>
+            <groupId>com.server</groupId>
             <artifactId>system</artifactId>
             <version>${server.version}</version>
         </dependency>
