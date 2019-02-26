@@ -1,19 +1,12 @@
 package com.server.shiro.config;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.servlet.Filter;
 
 import com.server.shiro.cache.RedisCacheManager;
-import com.server.shiro.session.RedisSessionDAO;
-import org.apache.commons.io.IOUtils;
 import org.apache.shiro.cache.ehcache.EhCacheManager;
 import org.apache.shiro.codec.Base64;
-import org.apache.shiro.config.ConfigurationException;
-import org.apache.shiro.io.ResourceUtils;
 import org.apache.shiro.mgt.SecurityManager;
 import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
@@ -143,17 +136,6 @@ public class ShiroConfig
     }
 
     /**
-     * 自定义RedisSessionDAO会话
-     */
-    @Bean
-    public RedisSessionDAO redisSessionDAO()
-    {
-        RedisSessionDAO redisSessionDAO = new RedisSessionDAO();
-        redisSessionDAO.setExpireTime(expireTime * 60);
-        return redisSessionDAO;
-    }
-
-    /**
      * 自定义sessionFactory会话
      */
     @Bean
@@ -195,7 +177,7 @@ public class ShiroConfig
         // 是否定时检查session
         manager.setSessionValidationSchedulerEnabled(true);
         // 自定义SessionDao
-        manager.setSessionDAO(redisEnabled ? redisSessionDAO() : sessionDAO());
+        manager.setSessionDAO(sessionDAO());
         // 自定义sessionFactory
         manager.setSessionFactory(sessionFactory());
         return manager;
@@ -221,7 +203,7 @@ public class ShiroConfig
         // 是否定时检查session
         manager.setSessionValidationSchedulerEnabled(true);
         // 自定义SessionDao
-        manager.setSessionDAO(redisEnabled ? redisSessionDAO() : sessionDAO());
+        manager.setSessionDAO(sessionDAO());
         // 自定义sessionFactory
         manager.setSessionFactory(sessionFactory());
         return manager;
