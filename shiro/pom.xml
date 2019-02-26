@@ -46,6 +46,11 @@
             <artifactId>shiro-ehcache</artifactId>
             <version>${shiro.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+            <version>0.6.0</version>
+        </dependency>
 
         <!-- thymeleaf模板引擎和shiro框架的整合 -->
         <dependency>

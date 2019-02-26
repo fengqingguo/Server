@@ -195,7 +195,7 @@ public class ShiroConfig
         // 是否定时检查session
         manager.setSessionValidationSchedulerEnabled(true);
         // 自定义SessionDao
-        manager.setSessionDAO(sessionDAO());
+        manager.setSessionDAO(redisEnabled ? redisSessionDAO() : sessionDAO());
         // 自定义sessionFactory
         manager.setSessionFactory(sessionFactory());
         return manager;

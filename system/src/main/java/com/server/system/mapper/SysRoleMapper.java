@@ -2,12 +2,15 @@ package com.server.system.mapper;
 
 import java.util.List;
 import com.server.system.domain.SysRole;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.Cacheable;
 
 /**
  * 角色表 数据层
  * 
  * @author server
  */
+@CacheConfig(cacheNames = "roles")
 public interface SysRoleMapper
 {
     /**
@@ -24,6 +27,7 @@ public interface SysRoleMapper
      * @param userId 用户ID
      * @return 角色列表
      */
+    @Cacheable(key ="#p0")
     public List<SysRole> selectRolesByUserId(Long userId);
 
     /**

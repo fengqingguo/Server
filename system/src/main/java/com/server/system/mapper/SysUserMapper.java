@@ -2,13 +2,15 @@ package com.server.system.mapper;
 
 import java.util.List;
 import com.server.system.domain.SysUser;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.Cacheable;
 
 /**
  * 用户表 数据层
  * 
  * @author server
  */
-
+@CacheConfig(cacheNames = "users")
 public interface SysUserMapper
 {
     /**
@@ -49,6 +51,7 @@ public interface SysUserMapper
      * @param userId 用户ID
      * @return 用户对象信息
      */
+    @Cacheable(key ="#p0")
     public SysUser selectUserById(Long userId);
 
     /**
