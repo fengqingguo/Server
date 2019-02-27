@@ -3,12 +3,15 @@ package com.server.system.mapper;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import com.server.system.domain.SysMenu;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.Cacheable;
 
 /**
  * 菜单表 数据层
  * 
  * @author server
  */
+@CacheConfig(cacheNames = "menus")
 public interface SysMenuMapper
 {
     /**
@@ -16,6 +19,7 @@ public interface SysMenuMapper
      * 
      * @return 菜单列表
      */
+    @Cacheable(key ="#p0")
     public List<SysMenu> selectMenuAll();
     
     /**
@@ -55,6 +59,7 @@ public interface SysMenuMapper
      * @param menu 菜单信息
      * @return 菜单列表
      */
+    @Cacheable(key ="#p0")
     public List<SysMenu> selectMenuList(SysMenu menu);
 
     /**
