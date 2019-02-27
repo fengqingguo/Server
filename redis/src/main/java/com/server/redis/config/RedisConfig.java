@@ -1,24 +1,24 @@
 package com.server.redis.config;
 
+import com.alibaba.fastjson.parser.ParserConfig;
 import com.server.redis.util.FastJson2JsonRedisSerializer;
-import com.server.redis.util.RedisTemplate;
-import com.server.redis.util.RedisUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.RedisPassword;
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
-import org.springframework.data.redis.connection.jedis.JedisClientConfiguration;
-import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.redis.core.*;
+import org.springframework.data.redis.serializer.*;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @ClassName: RedisConfig
@@ -27,105 +27,56 @@ import java.time.Duration;
  * @Description:
  */
 @Configuration
+@EnableCaching
 @PropertySource("classpath:redis.properties")
 public class RedisConfig {
 
     private static final Logger log = LoggerFactory.getLogger(RedisConfig.class);
 
-    @Value("${redis.hostName}")
-    private String hostName;
+    @Autowired
+    private RedisConnectionFactory factory;
 
-    @Value("${redis.password}")
+    @Value("${spring.redis.host}")
+    private String host;
+
+    @Value("${spring.redis.port}")
+    private int port;
+
+    @Value("${spring.redis.timeout}")
+    private int timeout;
+
+    @Value("${spring.redis.jedis.pool.max-idle}")
+    private int maxIdle;
+
+    @Value("${spring.redis.jedis.pool.max-wait}")
+    private long maxWaitMillis;
+
+    @Value("${spring.redis.password}")
     private String password;
 
-    @Value("${redis.port}")
-    private Integer port;
+    @Value("${spring.redis.block-when-exhausted}")
+    private boolean blockWhenExhausted;
 
-    @Value("${redis.maxIdle}")
-    private Integer maxIdle;
-
-    @Value("${redis.timeout}")
-    private Integer timeout;
-
-    @Value("${redis.maxTotal}")
-    private Integer maxTotal;
-
-    @Value("${redis.maxWaitMillis}")
-    private Integer maxWaitMillis;
-
-    @Value("${redis.minEvictableIdleTimeMillis}")
-    private Integer minEvictableIdleTimeMillis;
-
-    @Value("${redis.numTestsPerEvictionRun}")
-    private Integer numTestsPerEvictionRun;
-
-    @Value("${redis.timeBetweenEvictionRunsMillis}")
-    private long timeBetweenEvictionRunsMillis;
-
-    @Value("${redis.testOnBorrow}")
-    private boolean testOnBorrow;
-
-    @Value("${redis.testWhileIdle}")
-    private boolean testWhileIdle;
-
-    /**
-     * @auther: zhangyingqi
-     * @date: 17:52 2018/8/28
-     * @param: []
-     * @return: org.springframework.data.redis.connection.jedis.JedisConnectionFactory
-     * @Description: Jedis配置
-     */
     @Bean
-    public JedisConnectionFactory JedisConnectionFactory(){
-        RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration ();
-        redisStandaloneConfiguration.setHostName(hostName);
-        redisStandaloneConfiguration.setPort(port);
-        //由于我们使用了动态配置库,所以此处省略
-        //redisStandaloneConfiguration.setDatabase(database);
-        redisStandaloneConfiguration.setPassword(RedisPassword.of(password));
-        JedisClientConfiguration.JedisClientConfigurationBuilder jedisClientConfiguration = JedisClientConfiguration.builder();
-        jedisClientConfiguration.connectTimeout(Duration.ofMillis(timeout));
-        JedisConnectionFactory factory = new JedisConnectionFactory(redisStandaloneConfiguration,
-                jedisClientConfiguration.build());
-        return factory;
+    public JedisPool redisPoolFactory(){
+        log.info("JedisPool注入成功！！");
+        log.info("redis地址：" + host + ":" + port);
+        JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+        jedisPoolConfig.setMaxIdle(maxIdle);
+        jedisPoolConfig.setMaxWaitMillis(maxWaitMillis);
+        // 连接耗尽时是否阻塞, false报异常,ture阻塞直到超时, 默认true
+        jedisPoolConfig.setBlockWhenExhausted(blockWhenExhausted);
+        // 是否启用pool的jmx管理功能, 默认true
+        jedisPoolConfig.setJmxEnabled(true);
+        JedisPool jedisPool = new JedisPool(jedisPoolConfig, host, port, timeout, password);
+        return jedisPool;
     }
 
-    /**
-     * @auther: zhangyingqi
-     * @date: 17:52 2018/8/28
-     * @param: [redisConnectionFactory]
-     * @return: com.springboot.demo.base.utils.RedisTemplate
-     * @Description: 实例化 RedisTemplate 对象
-     */
     @Bean
-    public RedisTemplate functionDomainRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
-        log.info("RedisTemplate实例化成功！");
-        RedisTemplate redisTemplate = new RedisTemplate();
-        initDomainRedisTemplate(redisTemplate, redisConnectionFactory);
-        return redisTemplate;
-    }
+    public RedisTemplate<String, Object> redisTemplate()
+    {
+        RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
 
-    /**
-     * @auther: zhangyingqi
-     * @date: 17:52 2018/8/28
-     * @param: []
-     * @return: org.springframework.data.redis.serializer.RedisSerializer
-     * @Description: 引入自定义序列化
-     */
-    @Bean
-    public RedisSerializer fastJson2JsonRedisSerializer() {
-        return new FastJson2JsonRedisSerializer<Object>(Object.class);
-    }
-
-    /**
-     * @auther: zhangyingqi
-     * @date: 17:51 2018/8/28
-     * @param: [redisTemplate, factory]
-     * @return: void
-     * @Description: 设置数据存入 redis 的序列化方式,并开启事务
-     */
-    private void initDomainRedisTemplate(RedisTemplate redisTemplate, RedisConnectionFactory factory) {
-        //如果不配置Serializer，那么存储的时候缺省使用String，如果用User类型存储，那么会提示错误User can't cast to String！
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setHashKeySerializer(new StringRedisSerializer());
         redisTemplate.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
@@ -133,21 +84,40 @@ public class RedisConfig {
         // 开启事务
         redisTemplate.setEnableTransactionSupport(true);
         redisTemplate.setConnectionFactory(factory);
+        return redisTemplate;
+    }
+    @Bean
+    public RedisSerializer fastJson2JsonRedisSerializer() {
+        ParserConfig.getGlobalInstance().setAutoTypeSupport(true);
+        return new FastJson2JsonRedisSerializer<Object>(Object.class);
+    }
+    @Bean
+    public HashOperations<String, String, Object> hashOperations(RedisTemplate<String, Object> redisTemplate)
+    {
+        return redisTemplate.opsForHash();
     }
 
-    /**
-     * @auther: zhangyingqi
-     * @date: 17:51 2018/8/28
-     * @param: [redisTemplate]
-     * @return: com.springboot.demo.base.utils.RedisUtil
-     * @Description: 注入封装RedisTemplate
-     */
-    @Bean(name = "redisUtil")
-    public RedisUtil redisUtil(RedisTemplate redisTemplate) {
-        log.info("RedisUtil注入成功！");
-        RedisUtil redisUtil = new RedisUtil();
-        redisUtil.setRedisTemplate(redisTemplate);
-        return redisUtil;
+    @Bean
+    public ValueOperations<String, String> valueOperations(RedisTemplate<String, String> redisTemplate)
+    {
+        return redisTemplate.opsForValue();
     }
 
+    @Bean
+    public ListOperations<String, Object> listOperations(RedisTemplate<String, Object> redisTemplate)
+    {
+        return redisTemplate.opsForList();
+    }
+
+    @Bean
+    public SetOperations<String, Object> setOperations(RedisTemplate<String, Object> redisTemplate)
+    {
+        return redisTemplate.opsForSet();
+    }
+
+    @Bean
+    public ZSetOperations<String, Object> zSetOperations(RedisTemplate<String, Object> redisTemplate)
+    {
+        return redisTemplate.opsForZSet();
+    }
 }
