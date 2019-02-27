@@ -1,60 +1,79 @@
 package com.server.shiro.jwt;
 
-import com.server.system.domain.SysUser;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtBuilder;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 
-import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
-import java.security.Key;
+import java.io.UnsupportedEncodingException;
 import java.util.Date;
 
-@Component
+/**
+ * @author Mr.Li
+ * @create 2018-07-12 14:23
+ * @desc JWT工具类
+ **/
 public class JwtUtil {
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Autowired
-    private JwtConfig jwtConfig;
+    private static final long EXPIRE_TIME = 5 * 60 * 1000;
 
-    public Claims parseJWT(String jsonWebToken, String base64Security){
-        try{
-            Claims claims = Jwts.parser()
-                    .setSigningKey(DatatypeConverter.parseBase64Binary(base64Security))
-                    .parseClaimsJws(jsonWebToken).getBody();
-            return claims;
+    /**
+     * 校验token是否正确
+     *
+     * @param token  密钥
+     * @param secret 用户的密码
+     * @return 是否正确
+     */
+    public static boolean verify(String token, String username, String secret) {
+        try {
+            //根据密码生成JWT效验器
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+            JWTVerifier verifier = JWT.require(algorithm)
+                    .withClaim("username", username)
+                    .build();
+            //效验TOKEN
+            DecodedJWT jwt = verifier.verify(token);
+            return true;
+        } catch (Exception exception) {
+            return false;
         }
-        catch(Exception ex)
-        {
-            ex.printStackTrace();
-        }
-        return null;
     }
 
-    public String createJWT(SysUser user, String sessionId, String base64Security)
-    {
-        SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
-
-        //生成签名密钥
-        byte[] apiKeySecretBytes = DatatypeConverter.parseBase64Binary(base64Security);
-        Key signingKey = new SecretKeySpec(apiKeySecretBytes, signatureAlgorithm.getJcaName());
-        //添加构成JWT的参数
-        JwtBuilder builder = Jwts.builder()
-                .setId(user.getUserId().toString())
-                .setSubject(user.getUserName())
-                //.setIssuer(issuer)
-                .setAudience(sessionId)
-                .signWith(signatureAlgorithm, signingKey)
-                .setExpiration(new Date(System.currentTimeMillis() + jwtConfig.getExpiration()))
-                .setNotBefore(new Date(System.currentTimeMillis()));
-        //生成JWT
-        return builder.compact();
+    /**
+     * 获得token中的信息无需secret解密也能获得
+     *
+     * @return token中包含的用户名
+     */
+    public static String getUsername(String token) {
+        try {
+            DecodedJWT jwt = JWT.decode(token);
+            return jwt.getClaim("username").asString();
+        } catch (JWTDecodeException e) {
+            return null;
+        }
     }
 
+    /**
+     * 生成签名,5min后过期
+     *
+     * @param username 用户名
+     * @param secret   用户的密码
+     * @return 加密的token
+     */
+    public static String sign(String username, String secret) {
+        Date date = new Date(System.currentTimeMillis() + EXPIRE_TIME);
+        Algorithm algorithm = null;
+        try {
+            algorithm = Algorithm.HMAC256(secret);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        // 附带username信息
+        return JWT.create()
+                .withClaim("username", username)
+                .withExpiresAt(date)
+                .sign(algorithm);
 
+    }
 }

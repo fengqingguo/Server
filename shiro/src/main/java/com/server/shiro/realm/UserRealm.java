@@ -2,6 +2,8 @@ package com.server.shiro.realm;
 
 import java.util.HashSet;
 import java.util.Set;
+
+import com.server.shiro.jwt.JwtUtil;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authc.AuthenticationInfo;
@@ -84,10 +86,15 @@ public class UserRealm extends AuthorizingRealm
      * 登录认证
      */
     @Override
-    protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException
+    protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken auth) throws AuthenticationException
     {
-        UsernamePasswordToken upToken = (UsernamePasswordToken) token;
-        String username = upToken.getUsername();
+        UsernamePasswordToken upToken = (UsernamePasswordToken) auth;
+        // 解密获得username，用于和数据库进行对比
+        String username = JwtUtil.getUsername(upToken.getUsername());
+        if (username == null) {
+            throw new AuthenticationException("token无效");
+        }
+        username = upToken.getUsername();
         String password = "";
         if (upToken.getPassword() != null)
         {

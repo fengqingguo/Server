@@ -5,6 +5,7 @@ import java.util.Map;
 import javax.servlet.Filter;
 
 import com.server.shiro.cache.RedisCacheManager;
+import com.server.shiro.jwt.JwtFilter;
 import org.apache.shiro.cache.ehcache.EhCacheManager;
 import org.apache.shiro.codec.Base64;
 import org.apache.shiro.mgt.SecurityManager;
@@ -275,12 +276,13 @@ public class ShiroConfig
         filters.put("onlineSession", onlineSessionFilter());
         filters.put("syncOnlineSession", syncOnlineSessionFilter());
         filters.put("captchaValidate", captchaValidateFilter());
+        filters.put("jwt", new JwtFilter());
         // 注销成功，则跳转到指定页面
         filters.put("logout", logoutFilter());
         shiroFilterFactoryBean.setFilters(filters);
 
         // 所有请求需要认证
-        filterChainDefinitionMap.put("/**", "user,onlineSession,syncOnlineSession");
+        filterChainDefinitionMap.put("/**", "user,onlineSession,syncOnlineSession,jwt");
         shiroFilterFactoryBean.setFilterChainDefinitionMap(filterChainDefinitionMap);
 
         return shiroFilterFactoryBean;
